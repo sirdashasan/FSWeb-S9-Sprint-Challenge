@@ -1,78 +1,148 @@
-import React from 'react'
-
-// önerilen başlangıç stateleri
-const initialMessage = ''
-const initialEmail = ''
-const initialSteps = 0
-const initialIndex = 4 //  "B" nin bulunduğu indexi
+import axios from "axios";
+import React, { useState } from "react";
 
 export default function AppFunctional(props) {
-  // AŞAĞIDAKİ HELPERLAR SADECE ÖNERİDİR.
-  // Bunları silip kendi mantığınızla sıfırdan geliştirebilirsiniz.
+  const [index, setIndex] = useState(4);
+  const [steps, setSteps] = useState(0);
+  const [message, setMessage] = useState("");
+  const [email, setEmail] = useState("");
 
-  function getXY() {
-    // Koordinatları izlemek için bir state e sahip olmak gerekli değildir.
-    // Bunları hesaplayabilmek için "B" nin hangi indexte olduğunu bilmek yeterlidir.
-  }
+  // Koordinatların hesaplanması
+  const calculateCoordinates = () => {
+    const x = (index % 3) + 1;
+    const y = Math.floor(index / 3) + 1;
+    return `(${x}, ${y})`;
+  };
 
-  function getXYMesaj() {
-    // Kullanıcı için "Koordinatlar (2, 2)" mesajını izlemek için bir state'in olması gerekli değildir.
-    // Koordinatları almak için yukarıdaki "getXY" helperını ve ardından "getXYMesaj"ı kullanabilirsiniz.
-    // tamamen oluşturulmuş stringi döndürür.
-  }
+  // reset
+  const reset = () => {
+    setIndex(4);
+    setSteps(0);
+    setMessage("");
+    setEmail("");
+  };
 
-  function reset() {
-    // Tüm stateleri başlangıç ​​değerlerine sıfırlamak için bu helperı kullanın.
-  }
+  //hareketler
+  /*
+  0 | 1 | 2
+  ---------
+  3 | 4 | 5
+  ---------
+  6 | 7 | 8
+  */
+  const move = (direction) => {
+    let newIndex = index;
+    switch (direction) {
+      case "up":
+        newIndex = index - 3 >= 0 ? index - 3 : index;
+        break;
+      case "down":
+        newIndex = index + 3 < 9 ? index + 3 : index;
+        break;
+      case "left":
+        newIndex = index % 3 !== 0 ? index - 1 : index;
+        break;
+      case "right":
+        newIndex = index % 3 !== 2 ? index + 1 : index;
+        break;
+      default:
+        break;
+    }
+    //gridde yeni pozisyon
+    if (newIndex !== index) {
+      setIndex(newIndex);
+      setSteps(steps + 1);
+      setMessage("");
+    } else {
+      setMessage(`You can't go ${direction}`);
+    }
+  };
 
-  function sonrakiIndex(yon) {
-    // Bu helper bir yön ("sol", "yukarı", vb.) alır ve "B" nin bir sonraki indeksinin ne olduğunu hesaplar.
-    // Gridin kenarına ulaşıldığında başka gidecek yer olmadığı için,
-    // şu anki indeksi değiştirmemeli.
-  }
+  //e-mail input
+  const handleChange = (e) => {
+    setEmail(e.target.value);
+  };
 
-  function ilerle(evt) {
-    // Bu event handler, "B" için yeni bir dizin elde etmek üzere yukarıdaki yardımcıyı kullanabilir,
-    // ve buna göre state i değiştirir.
-  }
+  //
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  function onChange(evt) {
-    // inputun değerini güncellemek için bunu kullanabilirsiniz
-  }
+    if (!email) {
+      setMessage("Ouch: email is required");
+      return;
+    }
 
-  function onSubmit(evt) {
-    // payloadu POST etmek için bir submit handlera da ihtiyacınız var.
-  }
+    if (email === "foo@bar.baz") {
+      setMessage("foo@bar.baz failure #71");
+      return;
+    }
+
+    const x = (index % 3) + 1;
+    const y = Math.floor(index / 3) + 1;
+    const payload = {
+      x: x,
+      y: y,
+      steps: steps,
+      email: email,
+    };
+
+    try {
+      const response = await axios.post(
+        "http://localhost:9000/api/result",
+        payload
+      );
+      console.log(payload);
+
+      const emailName = email.split("@")[0];
+      setMessage(`${emailName} win`);
+    } catch (error) {
+      console.warn("Unprocessable Entity", error);
+    }
+  };
 
   return (
     <div id="wrapper" className={props.className}>
       <div className="info">
-        <h3 id="coordinates">Koordinatlar (2, 2)</h3>
-        <h3 id="steps">0 kere ilerlediniz</h3>
+        <h3 id="coordinates">Koordinatlar: {calculateCoordinates()}</h3>
+        <h3 id="steps">{steps} kere ilerlediniz</h3>
       </div>
       <div id="grid">
-        {
-          [0, 1, 2, 3, 4, 5, 6, 7, 8].map(idx => (
-            <div key={idx} className={`square${idx === 4 ? ' active' : ''}`}>
-              {idx === 4 ? 'B' : null}
-            </div>
-          ))
-        }
+        {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((idx) => (
+          <div key={idx} className={`square${idx === index ? " active" : ""}`}>
+            {idx === index ? "B" : null}
+          </div>
+        ))}
       </div>
       <div className="info">
-        <h3 id="message"></h3>
+        <h3 id="message">{message}</h3>
       </div>
       <div id="keypad">
-        <button id="left">SOL</button>
-        <button id="up">YUKARI</button>
-        <button id="right">SAĞ</button>
-        <button id="down">AŞAĞI</button>
-        <button id="reset">reset</button>
+        <button id="left" onClick={() => move("left")}>
+          SOL
+        </button>
+        <button id="up" onClick={() => move("up")}>
+          YUKARI
+        </button>
+        <button id="right" onClick={() => move("right")}>
+          SAĞ
+        </button>
+        <button id="down" onClick={() => move("down")}>
+          AŞAĞI
+        </button>
+        <button id="reset" onClick={reset}>
+          reset
+        </button>
       </div>
-      <form>
-        <input id="email" type="email" placeholder="email girin"></input>
+      <form onSubmit={handleSubmit}>
+        <input
+          id="email"
+          type="email"
+          placeholder="type email"
+          value={email}
+          onChange={handleChange}
+        ></input>
         <input id="submit" type="submit"></input>
       </form>
     </div>
-  )
+  );
 }
